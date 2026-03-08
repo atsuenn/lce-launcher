@@ -16,28 +16,37 @@ class Launcher(QWidget):
         title.setFont(font)
 
         main_btn = QPushButton()
-        if launcher_logic.check_if_installed == True:
+        if launcher_logic.check_if_installed() == True:
             main_btn = QPushButton("Play")
             main_btn.clicked.connect(launcher_logic.launch_game)
         else:
             main_btn = QPushButton("Install")
             main_btn.clicked.connect(launcher_logic.install_game)
+            main_btn.clicked.connect(self.update_ui)
         main_btn.setFixedSize(150, 50)
         font.setPointSize(16)
         main_btn.setFont(font)
-        
+
+        self.main_btn = main_btn
+            
         version = QLabel("v1.0")
 
-        update = QPushButton("Update")
-        update.setFixedSize(125, 40)
+        self.update = QPushButton("Update")
+        self.update.setFixedSize(125, 40)
         font.setPointSize(12)
-        update.setFont(font)
+        self.update.setFont(font)
 
         mainlayout.addWidget(title, alignment=Qt.AlignCenter)
         innerlayout.addWidget(main_btn, alignment=Qt.AlignCenter)
-        if launcher_logic.check_if_installed == True:
-            innerlayout.addWidget(update, alignment=Qt.AlignCenter)
+        innerlayout.addWidget(self.update, alignment=Qt.AlignCenter)
+        if launcher_logic.check_if_installed() == False:
+            self.update.hide()
+
         mainlayout.addLayout(innerlayout)
         mainlayout.addWidget(version, alignment=Qt.AlignBottom | Qt.AlignLeft)
 
         self.setLayout(mainlayout)
+    
+    def update_ui(self):
+        self.update.show()
+        self.main_btn.text()
