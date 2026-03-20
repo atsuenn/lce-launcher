@@ -1,96 +1,34 @@
-import sys
-from PySide6.QtWidgets import (QApplication, QWidget, QLabel, QPushButton, QVBoxLayout, QHBoxLayout, QProgressBar)
+import requests
+import os
 
-from PySide6.QtCore import Qt
+def download_latest_release(owner, repo, asset_name=None, save_dir="."):
+    url = f"https://api.github.com/repos/{owner}/{repo}/releases/latest"
 
-class Launcher(QWidget):
-    def __init__(self):
-        super().__init__()
+    response = requests.get(url)
+    response.raise_for_status()
+    data = response.json()
 
-        self.setWindowTitle("Minecraft LCE Launcher")
-        self.setFixedSize(600, 300)
+    assets = data.get("assets", [])
 
-        main_layout = QVBoxLayout()
-
-        # title stuff
-        title = QLabel("Minecraft LCE")
-        title_font = title.font()
-        title_font.setPointSize(32)
-        title.setFont(title_font)
-        title.setAlignment(Qt.AlignCenter)
-
-        # main btns
-        play_button = QPushButton("Play")
-        play_button.setFixedSize(150, 50)
-
-        update_button = QPushButton("Update")
-        update_button.setFixedSize(150, 50)
-
-        # progress bar
-        self.progress = QProgressBar()
-        self.progress.setValue(0)
-        self.progress.setFixedWidth(300)
-
-        self.progress_subheading = QLabel()
-
-        # centre layout for btns + progress
-        center_layout = QVBoxLayout()
-        center_layout.addWidget(play_button, alignment=Qt.AlignCenter)
-        center_layout.addWidget(update_button, alignment=Qt.AlignCenter)
-
-        # progress stuff
-        center_layout.addWidget(self.progress, alignment=Qt.AlignCenter)
-        center_layout.addWidget(self.progress_subheading, alignment=Qt.AlignCenter)
-
-
-        # bottom sec.
-        bottom_layout = QHBoxLayout()
-
-        version = QLabel("v1.0")
-        settings = QPushButton("Settings")
-        
-        bottom_layout.addWidget(version)
-        bottom_layout.addStretch()
-        bottom_layout.addWidget(settings)
-
-        # assemble all dem
-        main_layout.addWidget(title)
-        main_layout.addStretch()
-        main_layout.addLayout(center_layout)
-        main_layout.addStretch()
-        main_layout.addLayout(bottom_layout)
-
-        self.setLayout(main_layout)
+    if not assets:
+        raise Exception("No assets found in the latest release.")
     
-    def show_hide_progress(self, show_or_hide: bool):
-        """Checks if True or False. \n
-        If True, progress UI is shown, if False they are hidden.
-        """
-        print(show_or_hide)
-        if show_or_hide:
-            print("showing")
-            self.progress.show()
-            self.progress_subheading.show()
-        elif not show_or_hide:
-            print("hiding")
-            self.progress.hide()
-            self.progress_subheading.hide()
+    if asset_name:
+        asset = next((a for a in assets if a["name"] == asset_name), None)
+        if not asset:
+            raise Exception(f"Asset '{asset_name}' not found.")
+    else:
+        asset = assets[0]
 
+    download_url = asset["browser_download_url"]
+    filename = asset["name"]
+    filepath = os.path.join(save_dir, filename)
+    print(f"Downloading {filename}...")
 
-    def set_progress(self, value: int, subheading: str):
-        """Sets the visual progress bar and subheading text."""
-        self.progress.value(value)
-        self.progress_subheading.text = subheading
-
-if __name__ == '__main__':
-    # create the app
-    app = QApplication(sys.argv)
-
-    # craete and show form
-    form = Launcher()
-    form.show()
-
-    Launcher().show_hide_progress(False)
-
-    # run the qt loop
-    sys.exit(app.exec())
+    with requests.get(download_url, stream=True) as r:
+        r.raise_for_status()
+        with open(filepath, "wb") as f:
+            for chunk in r.iter_content(chunk_size=8192):
+                f.write(chunk)
+    
+    print(f"Saved to: {filepath}")
